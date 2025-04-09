@@ -210,6 +210,146 @@ typedef struct AVCodecParameters {
 ```
 
 
+
+### AVCodec
+```c
+typedef struct AVCodec {
+    const char *name;                     // 编解码器的名称，唯一标识符。例如："h264" 表示 H.264 编解码器。
+    const char *long_name;                // 编解码器的描述性名称，便于人类阅读。例如："H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10"。
+    enum AVMediaType type;                // 编解码器的媒体类型。可能的值包括：
+                                          // - AVMEDIA_TYPE_VIDEO（视频）
+                                          // - AVMEDIA_TYPE_AUDIO（音频）
+                                          // - AVMEDIA_TYPE_SUBTITLE（字幕）
+    enum AVCodecID id;                    // 编解码器的唯一标识符。例如：AV_CODEC_ID_H264 表示 H.264。
+    int capabilities;                     // 编解码器的能力标志，表示支持的功能。可能的标志包括：
+                                          // - AV_CODEC_CAP_DRAW_HORIZ_BAND: 支持水平带绘制。
+                                          // - AV_CODEC_CAP_DR1: 支持自定义缓冲区分配。
+                                          // - AV_CODEC_CAP_DELAY: 支持延迟帧处理。
+                                          // - AV_CODEC_CAP_FRAME_THREADS: 支持帧级多线程。
+                                          // - AV_CODEC_CAP_SLICE_THREADS: 支持切片级多线程。
+    uint8_t max_lowres;                   // 解码器支持的最大低分辨率值。
+    const AVRational *supported_framerates; // 支持的帧率数组，终止于 {0, 0}。例如：{30, 1} 表示 30 FPS。
+    const enum AVPixelFormat *pix_fmts;   // 支持的像素格式数组，终止于 -1。例如：AV_PIX_FMT_YUV420P 表示 YUV420 格式。
+    const int *supported_samplerates;     // 支持的音频采样率数组，终止于 0。例如：44100 表示 44.1 kHz。
+    const enum AVSampleFormat *sample_fmts; // 支持的音频采样格式数组，终止于 -1。例如：AV_SAMPLE_FMT_FLTP 表示浮点平面格式。
+    const AVClass *priv_class;            // 私有上下文的 AVClass，用于日志记录和选项管理。
+    const AVProfile *profiles;            // 支持的配置文件数组，终止于 {AV_PROFILE_UNKNOWN}。例如：H.264 支持 Baseline、Main 和 High 配置文件。
+    const char *wrapper_name;             // 如果编解码器基于外部库实现，则此字段表示外部库的名称。例如："libx264" 表示基于 x264 的 H.264 编码器。
+    const AVChannelLayout *ch_layouts;    // 支持的音频通道布局数组，终止于零值布局。例如：AV_CHANNEL_LAYOUT_STEREO 表示立体声布局。
+} AVCodec;
+
+```
+
+
+
+
+### AvCodecContext
+```c
+typedef struct AVCodecContext {
+    const AVClass *av_class;          // 用于日志记录的类信息，由 avcodec_alloc_context3 设置。
+    int log_level_offset;             // 日志级别偏移量。
+
+    enum AVMediaType codec_type;      // 媒体类型（如视频、音频、字幕）。
+    const struct AVCodec *codec;      // 指向编解码器的指针。
+    enum AVCodecID codec_id;          // 编解码器的 ID（如 H.264、AAC）。
+
+    unsigned int codec_tag;           // 编解码器的四字符代码（FourCC）。
+
+    void *priv_data;                  // 私有数据，特定于编解码器。
+    struct AVCodecInternal *internal; // 内部数据，供 libavcodec 使用。
+    void *opaque;                     // 用户私有数据，可用于存储应用程序特定信息。
+
+    int64_t bit_rate;                 // 平均比特率（单位：bps）。
+    int flags;                        // 编解码器标志（AV_CODEC_FLAG_*）。
+    int flags2;                       // 扩展标志（AV_CODEC_FLAG2_*）。
+
+    uint8_t *extradata;               // 额外数据（如 SPS/PPS）。
+    int extradata_size;               // 额外数据的大小。
+
+    AVRational time_base;             // 时间基准，用于时间戳计算。
+    AVRational pkt_timebase;          // 数据包时间基准。
+    AVRational framerate;             // 帧率。
+
+    int delay;                        // 编解码器的延迟帧数。
+
+    // 视频相关字段
+    int width, height;                // 视频宽度和高度（像素）。
+    int coded_width, coded_height;    // 编码宽度和高度（可能包含填充）。
+    AVRational sample_aspect_ratio;   // 像素的宽高比。
+    enum AVPixelFormat pix_fmt;       // 像素格式（如 YUV420P）。
+    enum AVPixelFormat sw_pix_fmt;    // 软件加速的像素格式。
+    enum AVColorPrimaries color_primaries; // 色彩原色。
+    enum AVColorTransferCharacteristic color_trc; // 色彩传输特性。
+    enum AVColorSpace colorspace;     // 色彩空间。
+    enum AVColorRange color_range;    // 色彩范围（如 MPEG、JPEG）。
+    enum AVChromaLocation chroma_sample_location; // 色度采样位置。
+    enum AVFieldOrder field_order;    // 场顺序（如顶场优先）。
+    int refs;                         // 参考帧数量。
+    int has_b_frames;                 // B 帧的数量。
+
+    // 音频相关字段
+    int sample_rate;                  // 音频采样率（如 44100 Hz）。
+    enum AVSampleFormat sample_fmt;   // 音频采样格式（如 AV_SAMPLE_FMT_FLTP）。
+    AVChannelLayout ch_layout;        // 音频通道布局（如立体声）。
+
+    int frame_size;                   // 每帧的样本数。
+    int block_align;                  // 每个音频帧的字节数。
+    int cutoff;                       // 音频截止频率。
+
+    // 硬件加速相关字段
+    AVBufferRef *hw_frames_ctx;       // 硬件加速帧上下文。
+    AVBufferRef *hw_device_ctx;       // 硬件设备上下文。
+    int hwaccel_flags;                // 硬件加速标志。
+
+    // 多线程相关字段
+    int thread_count;                 // 线程数量。
+    int thread_type;                  // 多线程类型（如帧级或切片级）。
+    int active_thread_type;           // 当前使用的多线程类型。
+
+    // 其他字段
+    int profile;                      // 编解码器配置文件（如 H.264 的 Baseline、Main）。
+    int level;                        // 编解码器级别。
+    int skip_loop_filter;             // 跳过环路滤波。
+    int skip_idct;                    // 跳过 IDCT。
+    int skip_frame;                   // 跳过帧解码。
+    int apply_cropping;               // 是否应用裁剪。
+
+    // 调试和错误处理
+    int debug;                        // 调试标志。
+    int err_recognition;              // 错误识别标志。
+    uint64_t error[AV_NUM_DATA_POINTERS]; // 错误信息。
+
+    // 其他字段省略...
+} AVCodecContext;
+```
+
+### AVCodec 和 AVCodecContext 的区别
+在 FFmpeg 中，AVCodecContext 和 AVCodec 是两个密切相关但职责不同的结构体：
+
+AVCodec：
+
+表示编解码器本身的描述信息
+
+包含编解码器的名称、类型(音频/视频/字幕)、ID、能力等信息
+
+是静态的、只读的，通常由 FFmpeg 在初始化时注册
+
+示例：H.264 解码器、MP3 编码器等
+
+AVCodecContext：
+
+表示编解码器的运行时上下文
+
+包含编解码器的配置参数、状态信息等
+
+是动态的、可配置的，每个编解码实例都有独立的上下文
+
+示例：特定视频流的宽度/高度、比特率等参数
+
+关系总结：AVCodec 描述编解码器是什么，而 AVCodecContext 描述如何使用这个编解码器。
+
+avcodec_alloc_context3() 函数用于为指定的编解码器分配并初始化一个 AVCodecContext 上下文。
+
 ### ffmpeg非常重要和基础的结构体
 1.	AVFormatContext：  
 •	代表一个多媒体文件的格式上下文，包含文件的全局信息。    
