@@ -664,3 +664,28 @@ ffmpeg -loop 1 -i frame0263.jpg -t 10 photo.mp4
 # 多张图像转为视频
 ffmpeg -f image2 -i frame%4d.jpg -r 30 video.mp4
 ```
+
+### pulsecode modulation 
+常见的音频位深
+![audio_bit_depths](ffmpeg_imgs/audio_bit_depths.png)
+常见的音频采样频率
+![audio_sample_rates](ffmpeg_imgs/audio_smaple_rates.png)
+
+```shell
+# 要在左通道中创建 C4 音调，在右通道中创建 C5 音调，我们可以使用命令
+ffplay -f lavfi -i "aevalsrc=exprs='sin(261.63*2*PI*t)|cos(523.25*2*PI*t)':c=FL+FR"
+
+# 使用 volume 滤镜来调整音量
+ffmpeg -i test_0.mp3 -af volume=1/2 middle_loud.mp3
+
+# 音量增加10分贝
+ffplay -i input.mp3 -af volume=10dB 
+
+```
+### 编解码器预设
+了解，需要使用的时候在细看
+
+### 隔行扫描视频
+可以去掉隔行扫描视频的隔行扫描
+
+调整隔行扫描的顺序
