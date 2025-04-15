@@ -137,6 +137,8 @@ const 用于定义常量或限制变量、函数、指针等的修改行为，�
  -  修饰指针    
         const 可以修饰指针本身或指针指向的数据：
 
+        在使用const时，如果关键字const出现在星号左边，表示被指物是常量；如果出现在星号右边，表示指针本身是常量；如果出现在星号两边，表示被指物和指针两者都是常量。
+
         const int* ptr：指针指向的数据是常量，不能通过 ptr 修改。
 
         int* const ptr：指针本身是常量，不能修改指针的指向。
@@ -291,3 +293,61 @@ static 用于定义静态变量、静态函数、静态成员等，具有以下�
 - 代码区：存放程序的执行代码
 
 详细内容参考：[C++内存模型](https://www.cnblogs.com/lqerio/p/12110482.html#%E5%8A%A8&%E9%9D%99)
+
+
+### constexpr 常量表达式
+const对象表示表明值不会改变，但是在编译的时候并不一定能取得结果     
+constexpr是const的一种加强，constexpr对象的值不仅不变，而且在编译时就能取得结果    
+如果一个const变量在编译的时候就能取得结果，那么使用constexpr修饰他更好  
+      
+
+constexpr函数可以把运行时的计算移到编译时，但是会增加编译时间。如果函数体很复杂，编译器可能会选择不在编译时计算   
+
+
+constexpr 全称是constant expression，表示常量表达式   
+常量表达是指值不会改变，并且在编译时就能取得结果
+
+特点：值不会改变，编译时就能取得结果，编译器会在编译时计算出值并替换掉变量名。
+
+使用场景：
+* 数组大小
+* 整型模板实参
+* switch-case 中的case标签
+* 枚举量的值
+* 对齐规格
+  
+```cpp
+int i1 = 42;  // i1不是常量表达式
+const int i2 = i1;  // i2不是常量表达式：初始值i1不是常量表达式
+const int i3 = 42;  // i3是常量表达式
+const int i4 = i3;  // i4是常量表达式：初始值i3是常量表达式
+const int i5 = get_size();  // 因为get_size()是普通函数，运行时才能确定，所以i5不是常量表达式
+```
+
+```cpp
+int i1 = 42;
+constexpr int i2 = i1;  // 报错：表达式必须含有常量值。因为constexpr变量i2必须使用常量表达式初始化，不允许在常量表达式中读取非const变量
+constexpr int i3 = 42;  // i3是常量表达式
+constexpr int i4 = i3 + 1;  // i4是常量表达式：初始值i3是常量表达式
+constexpr int i5 = get_size(); // 报错：表达式必须含有常量值。因为get_size()时constexpr函数才可以
+constexpr int i6 = get_size2(); // i6是常量表达式：初始值get_size2()是常量表达式
+```
+constexpr函数是指能用于常量表达式的函数，函数的返回类型和所有的形参的类型都要是字面值类型，而且函数中有且只有一个return语句。    
+**constexpr函数不一定返回常量表达式**
+```cpp
+constexpr int sum(int a, int b)
+{
+    return a + b;
+}
+
+constexpr int i2 = sum(a, b);  // 所有参数都是常量表达式，sum 的结果也是常量表达式，在编译期求值
+
+int AddThree(int a)
+{
+    return  sum(a, 3);  // // i 不是常量表达式，此时 sum 作为普通函数使用
+}
+```
+constexpr的好处
+1. 编译器可以保证 constexpr 对象是常量表达式（能够在编译期取得结果），而 const 对象不能保证。如果一个 const 变量能够在编译期求值，将其改为 constexpr 能够让代码更清晰易读
+2. constexpr 函数可以把运行期计算迁移至编译期，使得程序运行更快（但会增加编译时间）
+
