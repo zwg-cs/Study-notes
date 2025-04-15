@@ -351,3 +351,99 @@ constexpr的好处
 1. 编译器可以保证 constexpr 对象是常量表达式（能够在编译期取得结果），而 const 对象不能保证。如果一个 const 变量能够在编译期求值，将其改为 constexpr 能够让代码更清晰易读
 2. constexpr 函数可以把运行期计算迁移至编译期，使得程序运行更快（但会增加编译时间）
 
+### Lambda表达式
+lambda表达式: ()[]mutabel ->returnType{}    
+():参数列表，捕获外部变量，供函数体使用    
+[]:捕获列表，类似于函数对象
+mutable:可变关键字，取消[]中捕获变量的const属性，允许修改捕获的变量
+->返回值类型，
+{}函数体
+* 捕捉列表[] 和 函数体{} 不可省略
+* 如果使用了 mutable关键字 或者 ->returntype 返回值，就不能省略 ( )参数列表，即使为空
+* 返回值类型编译器可以推导，(SonarCube提示为了避免损失精度和适应未来需求，可以取消返回值，让程序自己推到返回值类型)
+* 最简单的lambda表达式：[]{}
+```cpp
+int main()
+{
+	// 直接使用lambda表达式
+	int ret = [](int a, int b) {return a + b; }(1, 2);
+	std::cout << ret << std::endl;
+
+	// 创建匿名函数对象
+	auto add = [](int a, int b) {return a + b; };
+	std::cout << add(3, 6) << std::endl;
+
+	// 参数设为引用
+	int x = 3;
+	int y = 4;
+	std::cout << "交换前" << std::endl;
+	std::cout << "\tx:" << x << std::endl << "\ty:" << y << std::endl;
+	auto swap = [](int& a, int& b) {
+		auto temp = a;
+		a = b;
+		b = temp;
+		};
+
+	swap(x, y);
+	std::cout << "交换后" << std::endl;
+	std::cout << "\tx:" << x << std::endl << "\ty:" << y << std::endl;
+
+	// 捕获外部变量
+	// 捉列表 中的参数是一个值类型（传值捕捉），此时的捕获的是外部变量的内容，然后赋值到 “m、m” 中，
+	// 捕捉列表 中的参数默认具有 常量属性，不能直接修改，但可以添加 mutable 关键字 取消常性
+
+	int m = 10;
+	int n = 20;
+	std::cout << "交换前" << std::endl;
+	std::cout << "\tm:" << m << std::endl << "\tn:" << n << std::endl;
+	auto swap_2 = [m, n]() mutable {
+		auto temp = m;
+		m = n;
+		n = temp;
+		};
+
+	swap_2();
+	// 没有改变，因为捕捉列表中的参数是值传递，需要修改还是要使用引用传递
+	std::cout << "交换后" << std::endl;
+	std::cout << "\tm:" << m << std::endl << "\tn:" << n << std::endl;
+
+	auto swap_3 = [&m, &n]() {
+		auto temp = m;
+		m = n;
+		n = temp;
+		};
+
+	swap_3();
+
+	std::cout << "使用swap3交换后" << std::endl;
+	std::cout << "\tm:" << m << std::endl << "\tn:" << n << std::endl;
+
+	// 不需要指定， 使用[&]可以引用捕捉外部所有变量,使用[=]全部值捕捉
+	auto func = [&]() {
+		std::cout << x << " " << y << " " << m << " " << n << std::endl;
+		};
+
+	func();
+
+	std::cout << "lambda表达式的大小: " << std::endl;
+	std::cout << "\t" << sizeof(swap) << " byte" << std::endl;
+
+	return 0;
+}
+```
+
+lambda表达式的有点
+* 简洁性： 对于简单的函数操作，无需再手动创建函数、调用，只需要编写一个 lambda 表达式生成函数对象
+* 方便性： lambda 表达式具有 捕捉列表，可以轻松捕获外部的变量，避免繁琐的参数传递与接收
+* 函数编程支持： lambda 表达式可以作为函数的参数、返回值或存储在数据结构中
+* 内联定义： lambda表达式可以作为函数的参数、返回值或存储在数据结构中
+* 简化代码： 对于一些简单的操作，使用 lambda 表达式可以减少代码的行数，提高代码的可读性
+
+
+### 仿函数
+
+
+### 函数指针  
+
+
+### 回调函数
