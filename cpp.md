@@ -441,9 +441,309 @@ lambda表达式的有点
 
 
 ### 仿函数
+https://www.cnblogs.com/ISmileLi/p/12699732.html
+
+1、仿函数概念
+仿函数是定义了一个含有operator()成员函数的对象，可以视为一个一般的函数，只不过这个函数功能是在一个类中的运算符operator()中实现，是一个函数对象，它将函数作为参数传递的方式来使用。
+
+2、仿函数的优缺点   
+优点：      
+    1）仿函数比函数指针的执行速度快，函数指针时通过地址调用，而仿函数是对运算符operator进行自定义来提高调用的效率。  
+    2）仿函数比一般函数灵活，可以同时拥有两个不同的状态实体，一般函数不具备此种功能。   
+    3）仿函数可以作为模板参数使用，因为每个仿函数都拥有自己的类型。  
+缺点：      
+    1）需要单独实现一个类。   
+    2）定义形式比较复杂。   
+
+3、仿函数作用
+仿函数通常有下面四个作用：   
+    1）作为排序规则，在一些特殊情况下排序是不能直接使用运算符<或者>时，可以使用仿函数。     
+    2）作为判别式使用，即返回值为bool类型。     
+    3）同时拥有多种内部状态，比如返回一个值得同时并累加。   
+    4）作为算法for_each的返回值使用。   
+**仿函数作为排序规则**
+```cpp
+#include <iostream>
+#include <string>
+#include <set>
+using namespace std;
+
+class Student
+{
+public:
+	string getName() const
+	{
+		return m_name;
+	}
+
+	float getScore() const
+	{
+		return m_score;
+	}
+
+public:
+	string m_name;
+	float m_score;
+};
+
+class compareName
+{
+public:
+	bool operator() (const Student& s1, const Student& s2) const
+	{
+		return s1.getName() < s2.getName();
+	}
+};
+
+int main()
+{
+	cout << "----------------仿函数作为排序规则使用--------------" << endl;
+
+	using StudentSet = set<Student, compareName>;
+	StudentSet stuSet;
+	stuSet.clear();
+	Student stuJack;
+	stuJack.m_name = "Jack";
+	stuJack.m_score = 80;
+
+	Student stuToby;
+	stuToby.m_name = "Toby";
+	stuToby.m_score = 90;
+
+	Student stuISmileLi;
+	stuISmileLi.m_name = "ISmileLi";
+	stuISmileLi.m_score = 100;
+
+	// 插入数值
+	stuSet.insert(stuJack);
+	stuSet.insert(stuToby);
+	stuSet.insert(stuISmileLi);
+
+	// 遍历
+	for (auto it = stuSet.begin(); it != stuSet.end(); ++it)
+	{
+		cout << "姓名: " << it->getName() << " 分数: " << it->getScore() << endl;
+	}
+}
+```
+**作为判别式示例**
+```cpp
+#include <iostream>
+#include <list>
+#include <algorithm>
+
+using namespace std;
+
+class RmNum
+{
+private:
+	int m_count = 0; // In-class initializer for m_count
+	int m_num;
+public:
+	explicit RmNum(int num) : m_num(num) {} 
+
+	bool operator() (int) 
+	{
+		return ++m_count == m_num;
+	}
+};
+
+//打印函数
+void myPrintf(list<int>& lt)
+{
+	for (auto it = lt.begin(); it != lt.end(); ++it)
+	{
+		cout << *it << " ";
+	}
+	cout << endl;
+}
+
+int main()
+{
+	cout << "----------------仿函数作为判别式使用--------------" << endl;
+	cout << "----------------list中插入数值--------------" << endl;
+	list<int> tmpList;
+	for (int i = 0; i < 9; i++)
+	{
+		tmpList.emplace_back(i);
+	}
+	cout << "----------------打印list中插入的数值--------------" << endl;
+	myPrintf(tmpList);
+
+	cout << "----------------删除list中符合条件的数值--------------" << endl;
+	auto pos = remove_if(tmpList.begin(), tmpList.end(), RmNum(2));  // 
+	tmpList.erase(pos, tmpList.end()); //删除后面的数
+	cout << "----------------打印删除后的list--------------" << endl;	
+	myPrintf(tmpList);
+	return 0;
+}
+
+```
+输出:这个输出有点意思，估计要研究一下remove_if的实现原理了
+```
+----------------仿函数作为判别式使用--------------
+----------------list中插入数值--------------
+----------------打印list中插入的数值--------------
+0 1 2 3 4 5 6 7 8
+----------------删除list中符合条件的数值--------------
+----------------打印删除后的list--------------
+0 2 4 5 6 7 8
+```
+**作为内部状态**
+```cpp
+class MySequence
+{
+public:
+	explicit MySequence(int ivalue) : m_value(ivalue) {}
+
+	int operator()()
+	{
+		return ++m_value;
+	}
+private:
+	int m_value;
+};
+
+//打印函数
+void myPrintf(list<int>& lt)
+{
+	for (auto it = lt.begin(); it != lt.end(); ++it)
+	{
+		cout << *it << " ";
+	}
+	cout << endl;
+}
+
+int main()
+{
+	cout << "----------------仿函数拥有内部状态--------------" << endl;
+	cout << "----------------list中插入数值--------------" << endl;
+	list<int> tmpList;
+	cout << "----------------从1开始序列化list--------------" << endl;
+	generate_n(back_inserter(tmpList), 9, MySequence(1));
+	myPrintf(tmpList);
+	cout << "----------------从10开始序列化list--------------" << endl;
+	generate(tmpList.begin(), tmpList.end(), MySequence(10));
+	myPrintf(tmpList);
+
+	return 0;
+}
+```
+**for_each使用**
+```cpp
+class AverageValue
+{
+private:
+	int m_sum;
+	int m_count;
+
+public:
+	void operator()(int value)
+	{
+		++m_count;
+		m_sum += value;
+	}
+
+	//返回平均值
+	double average() const
+	{
+        return static_cast<double>(m_sum) / m_count;
+	}
+
+};
+
+//打印函数
+void myPrintf(vector<int>& lt)
+{
+	for (auto it = lt.begin(); it != lt.end(); ++it)
+	{
+		cout << *it << " ";
+	}
+	cout << endl;
+}
+
+int main()
+{
+	cout << "----------------仿函数作为算法for_each的返回值使用--------------" << endl;
+
+	vector<int> tmpVector;
+	cout << "----------------vector中插入数值--------------" << endl;
+	for (int i = 0; i < 10; i++)
+	{
+		tmpVector.emplace_back(i);
+	}
+	cout << "----------------打印vector中插入的数值--------------" << endl;
+	myPrintf(tmpVector);
+	AverageValue averValue = for_each(tmpVector.begin(), tmpVector.end(), AverageValue());
+	cout << averValue.average() << endl;
+	return 0;
+}
+```
 
 
 ### 函数指针  
+函数指针是指向函数的指针变量。
+
+通常我们说的指针变量是指向一个整型、字符型或数组等变量，而函数指针是指向函数。
+
+函数指针可以像一般函数一样，用于调用函数、传递参数。
+
+函数指针类型的声明：
+```cpp
+// typedef int (*fun_ptr)(int,int); // 声明一个指向同样参数、返回值的函数指针类型
+
+int get_max(int x, int y)
+{
+	return (x > y) ? x : y;
+}
+
+
+int main()
+{
+	int a = 10;
+	int b = 20;
+	int c = 30;
+	// Function pointer
+	int (*p)(int, int) = &get_max;
+	int d = p(p(a, b), c);
+	std::cout << "The maximum value is: " << d << std::endl;
+
+	d = p(a, p(c, d));
+	std::cout << "The maximum value is: " << d << std::endl;
+	return 0;
+}
+```
 
 
 ### 回调函数
+函数指针作为某个函数的参数      
+函数指针变量可以作为某个函数的参数来使用的，回调函数就是一个通过函数指针调用的函数。
+
+简单讲：回调函数是由别人的函数执行时调用你实现的函数
+```cpp
+void populate_array(int* arr, size_t arr_size, int(*getNextValue)(void))
+{
+for (size_t i = 0; i < arr_size; ++i)
+{
+	arr[i] = getNextValue();
+}
+}
+
+int getNextRandomValue()
+{
+return rand();
+}
+
+int main()
+{
+	int arr[10];
+	populate_array(arr, 10, getNextRandomValue);
+
+	// Replacing raw for-loop with range-based for-loop
+	for (const auto& value : arr)
+	{
+		std::cout << value << " ";
+	}
+    return 0;
+}
+```
