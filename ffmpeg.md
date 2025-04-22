@@ -823,7 +823,7 @@ av_packet_rescale_ts(&pkt, in_stream->time_base, out_stream->time_base);
 // 这里流里的时间基in_stream->time_base和out_stream->time_base，是容器中的时间基，就是 tbn
 ```
 
-### 像素格式 yuv420p和yuvj420p和RGB24
+### 像素格式 yuv和RGB
 
 RGB色彩空间是由红色、绿色和蓝色三种颜色组成的，RGB24表示每个像素用24位来表示颜色信息，其中8位表示红色，8位表示绿色，8位表示蓝色。RGB24的优点是颜色还原度高，缺点是文件体积大。
 
@@ -842,6 +842,23 @@ $C_b = B - Y$
 $C_g = G - Y$   
 所以，对于亮度和色度拆开的颜色空间来说，一个有色图像完整表示（相对于RGB）应当是Y分量加上Cr，Cb，Cg分量。
 
-但是我们又会发现，Cr+Cb+Cg其实是一个常数，所以我们只需要在三个里面选2个颜色分量即可，第三个分量可以通过这两个推导得到
+但是我们又会发现，Cr+Cb+Cg其实是一个常数，所以我们只需要在三个里面选2个颜色分量即可，第三个分量可以通过这两个推导得到   
+亮度：即人眼对光的明亮程度的感受。  
+色调：人眼能看到的颜色种类，与光的波长有关  
+饱和度：颜色深浅程度。与各种颜色混入白光的比例有关。    
+以上 色调 + 饱和度 = 色度
+![rgb](ffmpeg_imgs/rgb.png)
+![yuv](ffmpeg_imgs/yuv.png)
+![yuv_space](ffmpeg_imgs/yuv_space.png)  
+YUV 到 RGB的转换公式如下：
+![rgb2yuv](ffmpeg_imgs/rgb2yuv.png)
 
+
+参考：   
+https://zhuanlan.zhihu.com/p/698541085   
+https://zhuanlan.zhihu.com/p/248116694   
+https://zhuanlan.zhihu.com/p/452676366   
+https://blog.csdn.net/the_sangzi_home/article/details/105311494     
+YUV444、 YUV422、YUV420  看下面链接      
+https://blog.csdn.net/rjszcb/article/details/118728264   
 ### 
