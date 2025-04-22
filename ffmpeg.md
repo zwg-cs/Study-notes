@@ -65,6 +65,9 @@ ffmpeg -i input.mp4 -fs 10M output.mp4
 ### 计算文件大小
 ![file_size_calculation](ffmpeg_imgs/file_size_calculation.png)
 
+### ffmpeg主要结构体
+https://blog.csdn.net/weixin_53223301/article/details/144544863
+
 ### AVFormatContext结构体
 ```c
 typedef struct AVFormatContext {
@@ -694,3 +697,151 @@ ffplay -i input.mp3 -af volume=10dB
 ```shell
 ffmpeg -i rtsp://192.168.0.103:25544/live/34020000001320000001_34020000001320000001?expired=20250629192431 -vcodec copy -acodec copy -f mepgts udp://127.0.0.1:12345
 ```
+
+### I、P、B帧
+https://zhuanlan.zhihu.com/p/359621409
+
+关键帧指的是，在构成一段动画的若干帧中，起到决定性作用的2-3帧   
+关键帧：相当于二维动画中的原画，指角色或者物体运动或变化中的关键动作所处的那一帧，它包含了图像的所有信息，后来帧仅包含了改变了的信息。
+ffmpeg中的关键帧是指I帧，I帧是视频编码中的一种帧类型，它包含完整的图像数据，而其他类型的帧（如P帧和B帧）则依赖于I帧进行解码。关键帧通常用于视频流的随机访问和编辑，因为它们提供了完整的图像信息。    
+简单地说，I帧是关键帧，属于帧内压缩，解码时单独的该帧便可完成解码；P帧为向前预测编码帧，即P帧解码时需要参考前面相关帧的信息才能解码；B帧为双向预测编码帧，解码时既需要参考前面已有的帧又需要参考后面待解码的帧；他们都是基于I帧来压缩数据。
+
+I帧表示关键帧，又称intra picture，I帧画面完整保留，解码时只需要本帧数据就可以完成（因为包含完整画面）。
+
+P帧前向预测编码帧 又称predictive-frame，表示的是这一帧跟之前的一个关键帧（或P帧）的差别，解码时需要用之前缓存的画面叠加上本帧定义的差别，生成最终画面。（也就是差别帧，P帧没有完整画面数据，只有与前一帧的画面差别的数据）
+
+B帧双向预测内插编码帧 又称bi-directional interpolated prediction frame，是双向差别帧，也就是B帧记录的是本帧与前后帧的差别，换言之，要解码B帧，不仅要取得之前的缓存画面，还要解码之后的画面，通过前后画面的与本帧数据的叠加取得最终的画面。B帧压缩率高，但是解码时CPU会比较累。
+
+因此，I帧和P帧的解码算法比较简单，资源占用也比较少，I帧只要自己完成就行了，至于P帧，也只需要解码器把前一个画面缓存一下，遇到P帧时就使用之前缓存的画面就行。如果视频流只有I和P，解码器可以不管后面的数据，边读边解码，线性前进。如果视频流还有B帧，则需要缓存前面和当前的视频帧，待后面视频帧获得后，再解码。
+
+I帧特点:
+
+1）.它是一个全帧压缩编码帧。它将全帧图像信息进行JPEG压缩编码及传输;
+
+2）.解码时仅用I帧的数据就可重构完整图像;
+
+3）.I帧描述了图像背景和运动主体的详情;
+
+4）.I帧不需要参考其他画面而生成;
+
+5）.I帧是P帧和B帧的参考帧(其质量直接影响到同组中以后各帧的质量);
+
+6）.I帧是帧组GOP的基础帧(第一帧),在一组中只有一个I帧;
+
+7）.I帧不需要考虑运动矢量;
+
+8）.I帧所占数据的信息量比较大。
+
+P帧特点:
+
+1）.P帧是I帧后面相隔1~2帧的编码帧;
+
+2）.P帧采用运动补偿的方法传送它与前面的I或P帧的差值及运动矢量(预测误差);
+
+3）.解码时必须将I帧中的预测值与预测误差求和后才能重构完整的P帧图像;
+
+4）.P帧属于前向预测的帧间编码。它只参考前面最靠近它的I帧或P帧;
+
+5）.P帧可以是其后面P帧的参考帧,也可以是其前后的B帧的参考帧;
+
+6）.由于P帧是参考帧,它可能造成解码错误的扩散;
+
+7）.由于是差值传送,P帧的压缩比较高。
+
+B帧特点
+
+1）.B帧是由前面的I或P帧和后面的P帧来进行预测的;
+
+2）.B帧传送的是它与前面的I或P帧和后面的P帧之间的预测误差及运动矢量;
+
+3）.B帧是双向预测编码帧;
+
+4）.B帧压缩比最高,因为它只反映丙参考帧间运动主体的变化情况,预测比较准确;
+
+5）.B帧不是参考帧,不会造成解码错误的扩散。
+
+
+### DTS和PTS
+PTS（Presentation Time Stamp）表示帧在播放时的时间戳，指示该帧应该在何时被显示。PTS 是基于时间基准（time_base）计算的，通常用于视频和音频流的同步。     
+DTS（Decoding Time Stamp）表示帧在解码时的时间戳，指示该帧应该在何时被解码。DTS 通常用于 B 帧，因为 B 帧需要依赖于前后帧进行解码。
+
+在没有B frame的情况下，DTS和PTS的输出顺序是一样的
+
+GOP：两个I frame之间形成一个GOP，在x264中同时可以通过参数来设定bf的大小，即：I 和p或者两个P之间B的数量。
+
+如果有B frame 存在的情况下一个GOP的最后一个frame一定是P.
+
+![PTS_DTS](./ffmpeg_imgs/PTS_DTS.png)
+
+**采集顺序**指图像传感器采集原始信号得到图像帧的顺序。  
+**编码顺序**指编码器编码后图像帧的顺序。存储到磁盘的本地视频文件中图像帧的顺序与编码顺序相同。    
+**传输顺序**指编码后的流在网络中传输过程中图像帧的顺序。    
+**解码顺序**指解码器解码图像帧的顺序。    
+**显示顺序**指图像帧在显示器上显示的顺序。       
+**采集顺序与显示顺序相同。编码顺序、传输顺序和解码顺序相同。**
+
+### 时间基与时间戳的概念
+https://www.cnblogs.com/leisure_chn/p/10584910.html
+
+在 FFmpeg 中，时间基(time_base)是时间戳(timestamp)的单位，时间戳值乘以时间基，可以得到实际的时刻值(以秒等为单位)。例如，如果一个视频帧的 dts 是 40，pts 是 160，其 time_base 是 1/1000 秒，那么可以计算出此视频帧的解码时刻是 40 毫秒(40/1000)，显示时刻是 160 毫秒(160/1000)。FFmpeg 中时间戳(pts/dts)的类型是 int64_t 类型，把一个 time_base 看作一个时钟脉冲，则可把 dts/pts 看作时钟脉冲的计数。
+
+三种时间基 tbr、tbn 和 tbc   
+tbn：对应容器中的时间基。值是 AVStream.time_base 的倒数   
+tbc：对应编解码器中的时间基。值是 AVCodecContext.time_base 的倒数   
+tbr：从视频流中猜算得到，可能是帧率或场率(帧率的 2 倍)   
+除以上三种时间基外，FFmpeg 还有一个内部时间基 AV_TIME_BASE(以及分数形式的 AV_TIME_BASE_Q)   
+```cpp
+// Internal time base represented as integer
+#define AV_TIME_BASE            1000000
+
+// Internal time base represented as fractional value
+#define AV_TIME_BASE_Q          (AVRational){1, AV_TIME_BASE}
+```
+av_q2d()将时间从 AVRational 形式转换为 double 形式。AVRational 是分数类型，double 是双精度浮点数类型，转换的结果单位是秒。转换前后的值基于同一时间基，仅仅是数值的表现形式不同而已。    
+
+av_rescale_q()用于不同时间基的转换，用于将时间值从一种时间基转换为另一种时间基。
+
+av_packet_rescale_ts()用于将 AVPacket 中各种时间值从一种时间基转换为另一种时间基。
+
+AVStream.time_base 是 AVPacket 中 pts 和 dts 的时间单位，输入流与输出流中 time_base 按如下方式确定：   
+对于输入流：打开输入文件后，调用 avformat_find_stream_info()可获取到每个流中的 time_base    
+对于输出流：打开输出文件后，调用 avformat_write_header()可根据输出文件封装格式确定每个流的 time_base 并写入输出文件中   
+
+不同封装格式具有不同的时间基，在转封装(将一种封装格式转换为另一种封装格式)过程中，时间基转换相关代码如下：
+```cpp
+av_read_frame(ifmt_ctx, &pkt);
+pkt.pts = av_rescale_q_rnd(pkt.pts, in_stream->time_base, out_stream->time_base, AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX);
+pkt.dts = av_rescale_q_rnd(pkt.dts, in_stream->time_base, out_stream->time_base, AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX);
+pkt.duration = av_rescale_q(pkt.duration, in_stream->time_base, out_stream->time_base);
+
+// 下面的代码具有和上面代码相同的效果：
+// 从输入文件中读取 packet
+av_read_frame(ifmt_ctx, &pkt);
+// 将 packet 中的各时间值从输入流封装格式时间基转换到输出流封装格式时间基
+av_packet_rescale_ts(&pkt, in_stream->time_base, out_stream->time_base);
+
+// 这里流里的时间基in_stream->time_base和out_stream->time_base，是容器中的时间基，就是 tbn
+```
+
+### 像素格式 yuv420p和yuvj420p和RGB24
+
+RGB色彩空间是由红色、绿色和蓝色三种颜色组成的，RGB24表示每个像素用24位来表示颜色信息，其中8位表示红色，8位表示绿色，8位表示蓝色。RGB24的优点是颜色还原度高，缺点是文件体积大。
+
+由于human visual system (HVS)通常对亮度要比色度更敏感，对于后续需要进行有损压缩过程以及编码器来说，那在给我输入原始图像之前，既然色度信息不敏感，那是不是可以直接去掉图像中部分色度信息，也无伤大雅。
+
+所以首先可以考虑将图片中**亮度和色度信息分开**，然后让色度分量的分辨率(像素点)比亮度分辨率低一些，即对色度分量进行降采样处理，丢掉一些色度信息。
+
+而YUV(YCbCr)就是比较常用的满足这种需求的颜色空间形式。其中Y表示luminance亮度分量，它的值可以通过原始RGB的三个颜色分量加权得到。   
+$Y = {k_r}R + {k_g}G + {k_b}B$    
+
+其中$k_r$、$k_g$、$k_b$分别是红色、绿色和蓝色的权重系数。一般来说，$k_r$=0.299，$k_g$=0.587，$k_b$=0.114。
+
+而颜色信息（chrominance or chroma）可以用原始RGB颜色分量和亮度Y的差值来表示，因为RGB有三个颜色分量，所以理论上我们会得到Cr，Cb，Cg三个颜色分量，
+$C_r = R - Y$   
+$C_b = B - Y$      
+$C_g = G - Y$   
+所以，对于亮度和色度拆开的颜色空间来说，一个有色图像完整表示（相对于RGB）应当是Y分量加上Cr，Cb，Cg分量。
+
+但是我们又会发现，Cr+Cb+Cg其实是一个常数，所以我们只需要在三个里面选2个颜色分量即可，第三个分量可以通过这两个推导得到
+
+### 
