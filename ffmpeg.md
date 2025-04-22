@@ -689,3 +689,8 @@ ffplay -i input.mp3 -af volume=10dB
 可以去掉隔行扫描视频的隔行扫描
 
 调整隔行扫描的顺序
+
+### 使用ffmepg推流
+```shell
+ffmpeg -i rtsp://192.168.0.103:25544/live/34020000001320000001_34020000001320000001?expired=20250629192431 -vcodec copy -acodec copy -f mepgts udp://127.0.0.1:12345
+```
