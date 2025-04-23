@@ -861,4 +861,26 @@ https://zhuanlan.zhihu.com/p/452676366
 https://blog.csdn.net/the_sangzi_home/article/details/105311494     
 YUV444、 YUV422、YUV420  看下面链接      
 https://blog.csdn.net/rjszcb/article/details/118728264   
-### 
+
+### ffmpeg 麦克风
+使用ffmpeg -list_devices true -f dshow -i dummy命令列出所有可用的音频和视频设备。
+
+录制麦克风音频
+```shell
+ffmpeg -f dshow -i audio="麦克风 (Realtek High Definition Audio)" output.mp3
+```
+* -f dshow：指定使用 DirectShow 捕获音频（Windows 特有）。
+* -i audio="设备名称"：指定麦克风设备。
+* output.mp3：输出文件名（支持 .mp3、.wav、.aac 等格式）。
+```shell
+# 指定编码格式
+ffmpeg -f dshow -i audio="麦克风名称" -c:a libmp3lame -b:a 192k output.mp3
+# -c:a libmp3lame：使用 MP3 编码（需 FFmpeg 编译支持）。
+# -b:a 192k：设置比特率为 192kbps（可调整）。
+
+# 录制WAV（无损格式）
+ffmpeg -f dshow -i audio="麦克风名称" output.wav
+
+# 录制 AAC（高质量压缩）
+ffmpeg -f dshow -i audio="麦克风名称" -c:a aac -b:a 256k output.m4a
+```
