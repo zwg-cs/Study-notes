@@ -884,3 +884,59 @@ ffmpeg -f dshow -i audio="麦克风名称" output.wav
 # 录制 AAC（高质量压缩）
 ffmpeg -f dshow -i audio="麦克风名称" -c:a aac -b:a 256k output.m4a
 ```
+
+## 第4章 封装与解封装 （复习知识点）
+容器格式：定义 功能
+
+二进制查看工具：HxD, Notepad++    
+分析MP4的工具，mp4info, Elecard StreamEye
+
+### 视频文件转MP4
+
+相关概念：
+* 元数据（moov）和音视频数据（mdat）
+* box 和 atom 
+* 容器（盒子、箱子）和子容器
+* box的基本结构（header:size type, data），box和FullBox（largesize）的区别
+* mp4的box列表
+* moov至少包含的三种box：mvhd、trak、udta
+* trak至少包含的三种box：tkhd、mdia、edts
+* mdia至少包含的三种box：mdhd、hdlr、minf
+* minf包含视频的vhmd和音频的smhd
+* minf里面的dinf,stbl、stsd、stts、stsc、stsz、stco、co64
+![mp4_box](ffmpeg_imgs/mp4_box.png)     
+了解基本的box结构，知道重要的box的作用。    
+moov box在前和moov box在后的区别。
+直播场景中的Fragment MP4（fmp4）和 CMAF，基本原理
+* mp4在ffmpep中demuxer的参数和muxer的参数（faststart, dash）
+
+### 视频文件转FLV
+分为FLV文件头和FLV文件内容
+FLV主要格式：FLVTAG     
+FLVTAG:header和body FVL文件分析器**flvAnalyser**    
+ffmpeg中FVL的muxer和demuxer的基本参数   
+生成带关键索引的FLV文件，根据索引快进，跳转
+
+### 视频文件转MPEG-TS
+TS文件格式分3层：ES层、PES层、TS/PS层  每层作用   
+ffmpeg中TS的muxer的基本参数   
+MPEG-TS格式分析工具：EasyICE和DVBinspector
+
+### 视频文件转HLS
+工作方式
+M3U8文件的基本结构
+* EXT-X-VERSION：版本号
+* EXT-X-TARGETDURATION：最长的分片时长
+* EXT-X-MEDIA-SEQUENCE：分片序列号
+* EXT-X-ENDLIST：结束标志
+* EXT-X-PLAYLIST-TYPE：播放类型
+* EXT-X-MAP：初始化段
+* EXT-X-STREAM-INF：流信息
+* EXT-X-PLAYLIST：播放列表
+* EXT-X-BYTERANGE：字节范围
+ffmpeg中HLS的muxer的基本参数
+
+### 视频文件切片
+segment切片参数     
+segment_format指定文件格式      
+提取视频流，提取音频流
