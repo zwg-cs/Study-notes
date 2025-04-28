@@ -940,3 +940,55 @@ ffmpeg中HLS的muxer的基本参数
 segment切片参数     
 segment_format指定文件格式      
 提取视频流，提取音频流
+
+
+## 第5章 编码与转码
+
+### 软编码H264
+```shell
+#  查看h264编码器的参数
+ffmpeg -h encoder=libx254
+```
+
+h264编码器常用参数
+* preset：编码速度和压缩率的平衡，值越小，速度越快，压缩率越低。常用值有 ultrafast、superfast、veryfast、faster、fast、medium、slow、veryslow。
+```shell
+# preset=ultrafast
+ffmpeg -i Titanic.mkv -c:v libx264 -preset ultrafast -b:v 2000k ultrafast.mkv
+# preset=medium
+ffmpeg -i Tianic.mkv -c:v libx264 -preset mediun -b:v 2000k meduin.mkv
+# 并排显示
+ffmpeg -i .\ultrafast.mkv -i .\medium.mkv -filter_complex "[0:v][1:v]hstack=inputs=2[v]" -map "[v]" -map 0:a -c:v libx264 -c:a copy compare.mkv
+```
+* tune：编码器的优化目标，值有 film、animation、grain、stillimage、psnr、screencapture、fastdecode、zerolatency。
+* profile：编码器的配置文件，值有 baseline、main、high、high10、high422、high444。
+```shell
+# profile=baseline (没有B帧)
+ffmpeg -i Titanic.mkv -c:v libx264 -profile:v baseline  -level 3.1 baseline.ts
+# profile=high
+ffmpeg -i Titanic.mkv -c:v libx264 -profile:v high  -level 3.1 high.ts
+# windows用ffprobe查看B帧数量
+???
+```
+* level：编码器的级别，值有 1.0、1.1、1.2、1.3、2.0、2.1、2.2、3.0、3.1、3.2、4.0、4.1、4.2、5.0、5.1。
+* -g: 控制以帧数为单位的 GOP 大小，值越大，GOP 越长，压缩率越高。使用sc_threshold关闭场景切换判定，不插入关键帧
+```shell
+# 设置gop大小为30，sc_threshold=0
+ffmpeg -i Titanic.mkv -c:v libx264 -g 30 -sc_threshold 0 gop_th.mkv
+```
+设置h264的内部参数，如不出现b帧，控制I P B帧的出现频率和规律
+```shell
+# 通过-x264-params参数设置h264的b帧数量为0
+ffmpeg -i .\Titanic.mkv -c:v libx264 -x264-params "bframes=0" -g 30 -sc_threshold 0 -y gop_th_nob.ts
+# 通过-x264-params参数设置h264每两个P帧之间3个B帧
+ffmpeg -i .\Titanic.mkv -c:v libx264 -x264-params "bframes=3:b-adapt=0" -g 30 -sc_threshold 0 -y gop_th_ibp.ts
+```
+
+码率设置
+* VBR:可变码率
+* CBR:恒定码率(平均恒定)
+* CRF:恒定质量
+```shell
+# 下面命令 HRD变为CBR 平均恒定码率最大最小码率5Mbit/s
+ffmpeg -i Titanic.mkv -an -c:v libx264 -x264opts "nal-hrd=cbr:force-cfr=1" -b:v 5M -maxrate 5M -minrate 5M -bufsize 5M -muxrate 5.5M cbr.ts
+```    
