@@ -992,3 +992,41 @@ ffmpeg -i .\Titanic.mkv -c:v libx264 -x264-params "bframes=3:b-adapt=0" -g 30 -s
 # 下面命令 HRD变为CBR 平均恒定码率最大最小码率5Mbit/s
 ffmpeg -i Titanic.mkv -an -c:v libx264 -x264opts "nal-hrd=cbr:force-cfr=1" -b:v 5M -maxrate 5M -minrate 5M -bufsize 5M -muxrate 5.5M cbr.ts
 ```    
+
+### 硬件加速
+先了解一下， NVIDIA GPU, intel QSV
+
+### MP3
+libmp3lame编码器的参数,了解编码质量参数
+* q参数：质量参数，值越小，质量越高，范围为 0-9。
+```shell
+ffmpeg -i test.mp3 -c:a linmp3lame -q:a 9 out.mp3
+# 恒定码率格式，流媒体使用
+ffmpeg -i test.mp3 -c:a libmp3lame -b:a 64k out.mp3
+```
+* abr: 平均码率编码，编码速度比vbr高马，质量比cbr高
+```shell
+ffmpeg -i test.mp3 -c:a libmp3lame -b:a 64k -abr 1 out.mp3
+```
+
+### AAC
+基本知识        
+基本编码器操作
+```shell
+ffmpeg -i test.mp3-c:a aac -b:a 64k out.aac
+```
+* -b:a：设置音频比特率，单位为 kbps。
+* -q:a：设置音频质量，范围为 0-5，值越小，质量越高。
+FDK-AAC编码, ffmpeg中质量最高的AAC编码器
+m4a是AAC的封装格式，AAC是MPEG-4的音频编码格式。
+```shell
+ffmpeg -i input.wav -c:a libfdk_aac -b:a 128k output.m4a
+```
+aac的vbr模式
+```shell
+ffmpeg -i input.wav -c:a libfdk_aac -vbr 5 output.m4a
+# HE
+ffmpeg -i input.wav -c:a libfdk_aac -profile:a aac_he -b:a 64k output.m4a
+# HEv2
+ffmpeg -i input.wav -c:a libfdk_aac -profile:a aac_he_v2 -b:a 64k output.m4a
+```
