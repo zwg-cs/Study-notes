@@ -854,6 +854,23 @@ YUV 到 RGB的转换公式如下：
 ![rgb2yuv](ffmpeg_imgs/rgb2yuv.png)
 
 
+YUV数据存储分为平面模式和交错模式。  
+平面模式：Y、U、V分量分别存储在不同的平面中。每个平面都是一个单独的数组，Y分量存储在一个数组中，U分量存储在另一个数组中，V分量存储在第三个数组中。   
+交错模式：Y、U、V分量交错存储在同一个平面中。每个像素的Y、U、V分量交替存储在同一个数组中。   
+宽度为6高度为4的YUV420格式图像，平面模式存储方式如下：
+```
+Y0 Y1 Y2 Y3 Y4 Y5 Y6 Y7 Y8 Y9 Y10 Y11 Y12 Y13 Y14 Y15
+Y16 Y17 Y18 Y19 Y20 Y21 Y22 Y23 U0 U1 U2 U3 U4 U5 V0 V1 V2 V3 V4 V5
+```
+宽度为6高度为4的YUV420格式图像，交错模式存储方式如下：
+```
+YU Y YU Y YU Y
+YV Y YV Y YV Y
+YU Y YU Y YU Y
+YV Y YV Y YV Y
+```
+ffmpeg中AV_PIC_FMT_YUV420P表示平面存储，AV_PIC_FMT_YUV420表示交错存储。
+
 参考：   
 https://zhuanlan.zhihu.com/p/698541085   
 https://zhuanlan.zhihu.com/p/248116694   
@@ -861,6 +878,16 @@ https://zhuanlan.zhihu.com/p/452676366
 https://blog.csdn.net/the_sangzi_home/article/details/105311494     
 YUV444、 YUV422、YUV420  看下面链接      
 https://blog.csdn.net/rjszcb/article/details/118728264   
+
+### jpeg
+JPEG（Joint Photographic Experts Group）是一种有损压缩的图像格式，广泛用于存储和传输数字图像。JPEG 压缩算法通过去除人眼不敏感的高频信息来减小图像文件的大小。JPEG 图像通常以 .jpg 或 .jpeg 扩展名保存。
+
+颜色空间采用YUVJ
+
+了解标准JPEG、渐进JPEG和JPEF2000。  
+标准JPEG从上到下，从左到右依次显示图像
+渐进JPEG从模糊到清晰逐步显示图像
+
 
 ### ffmpeg 麦克风
 使用ffmpeg -list_devices true -f dshow -i dummy命令列出所有可用的音频和视频设备。
