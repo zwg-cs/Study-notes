@@ -1071,3 +1071,157 @@ AAC每帧持续时间：1024 * 1000 / 44100 = 23.2ms
 错误的原因在于AAC编码器在编码时使用了AAC的ADTS封装格式，AAC的ADTS封装格式每帧音频数据的大小是1024个采样点，而MP3的帧大小是1152个采样点。   
 MP3编码器要求每次编码传入的音频帧的样本数量必须等于1152个采样点，而AAC编码器传入的音频帧的样本数量是1024个采样点，所以MP3编码器报错了。
 保存为MP3的正确做法应该是使用重采样。
+
+### avcodec_send_packet 和 avcodec_receive_frame
+在处理视频流的时候，由于B帧的存在，会在while循环中多次调用avcodec_receive_frame函数来获取解码后的帧数据。
+
+音频帧是按顺序解码的，一次调用avcodec_receive_frame就行了。但是为了代码统一性，依然保留循环，同时ffmpeg官方也推荐使用循环。
+
+### SwSContext
+在 FFmpeg 中，SwsContext 是用于 图像缩放（resize）、像素格式转换（pixel format conversion）和色彩空间转换（color space conversion） 的核心结构。它通过 libswscale 库实现，常用于视频处理（如转码、滤镜、播放等场景）。
+```c
+SwsContext *sws_ctx = sws_getContext(
+    src_width, src_height, src_pix_fmt,   // 输入参数：宽、高、像素格式
+    dst_width, dst_height, dst_pix_fmt,   // 输出参数：宽、高、像素格式
+    SWS_BILINEAR,                         // 缩放算法（如 SWS_BILINEAR）
+    NULL, NULL, NULL                      // 可选参数（滤镜、色彩矩阵等）
+);
+
+...
+
+// 分配输出内存（例如转换为 RGB24）
+av_image_alloc(dst_data, dst_linesize, dst_width, dst_height, dst_pix_fmt, 1);
+
+// 执行转换
+int ret = sws_scale(
+    sws_ctx,             // SwsContext 上下文
+    src_data,            // 输入数据指针数组
+    src_linesize,        // 输入行大小
+    0,                   // 起始行（通常为0）
+    src_height,          // 处理的行数（通常为原图高度）
+    dst_data,            // 输出数据指针数组
+    dst_linesize         // 输出行大小
+);
+
+sws_freeContext(sws_ctx);  // 释放 SwsContext
+```
+
+### AVFrame
+AVPacket 是 FFmpeg 中用于存储编码数据的结构体，通常用于存储音频或视频流中的数据包。它包含了数据包的大小、时间戳、流索引等信息。AVPacket 主要用于在解码和编码过程中传递数据。
+```c
+typedef struct AVFrame {
+    /**
+     * 存储原始帧数据，未编码的原始图像或音频数据，作为解码器的输出或编码器的输入
+     * data是一个指针数组，元素指向视频图像的某一plane或音频中某声道的某一plane
+     * 视频:
+     *   Packet: Y,U,V交织存储在一个plane中，如YUVYUV...data[0]指向这个plane
+     *   Planar: Y,U,V存储在三个plane中，data[0]指向Y-plane，data[1]指向U-plane，data[2]指向V-plane
+     * 音频:
+     *   Packet: L,R交织存储在一个plane中，形如LRLRLR...data[0]指向这个plane
+     *   Planar: L,R存储在两个plane中，data[0]指向L-plane，data[1]指向R-plane
+     */
+    uint8_t *data[AV_NUM_DATA_POINTERS];
+    /**
+     * linesize是一个数组
+     * 视频:
+     *   每个元素是一个图像plane中一行图像的大小(字节数)，注意有对齐要求linesize对应stride值
+     *   packed: 只有一个plane，linesize[0]表示一行图像所占的存储空间大小     
+     *   planar: 有多个plane，每个plane的linesize[i]表示一行图像在当前plane中所占的存储空间大小
+     * 音频:
+     *   每个元素是一个音频plane的大小(字节数)
+     *   packed: 多声道音频只有一个plane，linesize[0]表示所有数据的存储空间大小
+     *   planar: 有多个plane，但只使用一个linesize[0]，每个plane大小都是linesize[0]
+     * 事实上，linesize可能因性能考虑而填充一些额外的数据，故可能比实际对应的音视频数据要大
+     */
+    int linesize[AV_NUM_DATA_POINTERS];
+    /**
+     * 在一个正常的AVFrame中，data与extended_data通常都会被设置
+     * 但是对于一个plannar且有多个通道且data无法装下所有通道的数据的时候，extended_data必须被使用，用来存储多出来的通道的数据的指针
+     */
+    uint8_t **extended_data;
+	// ...
+} AVFrame;
+```
+linesize（或 stride）是 AVFrame 结构体中的一个重要参数，表示 每一行像素数据在内存中的对齐字节数。它直接影响图像数据的存储和访问方式。
+
+访问YUV420P的像素
+```cpp
+AVFrame *frame = ...;  // 假设是 YUV420P 格式
+int width = frame->width;
+int height = frame->height;
+
+// 访问 Y 分量（亮度）
+for (int y = 0; y < height; y++) {
+    uint8_t *y_line = frame->data[0] + y * frame->linesize[0];
+    for (int x = 0; x < width; x++) {
+        uint8_t pixel = y_line[x];  // 读取 Y 值
+    }
+}
+
+// 访问 U 分量（色度）
+for (int y = 0; y < height/2; y++) {
+    uint8_t *u_line = frame->data[1] + y * frame->linesize[1];
+    for (int x = 0; x < width/2; x++) {
+        uint8_t pixel = u_line[x];  // 读取 U 值
+    }
+}
+```
+访问RGB24的像素
+```cpp
+AVFrame *frame = ...;  // 假设是 RGB24 格式
+int width = frame->width;
+int height = frame->height;
+
+for (int y = 0; y < height; y++) {
+    uint8_t *line = frame->data[0] + y * frame->linesize[0];
+    for (int x = 0; x < width; x++) {
+        uint8_t r = line[x * 3];     // R
+        uint8_t g = line[x * 3 + 1]; // G
+        uint8_t b = line[x * 3 + 2]; // B
+    }
+}
+```
+
+分析
+```cpp
+uint8_t *y_line = frame->data[0] + y * frame->linesize[0];
+// frame->data[0]：指向图像 第一个分量（平面）的起始地址。
+// 对于 YUV420P，这是 Y（亮度）分量 的起始指针。
+// 对于 RGB24，这是所有像素数据的起始指针（因为 RGB 通常无分平面存储）。
+
+// y：当前要访问的 行号（从 0 到 height-1）。
+
+// frame->linesize[0]：第一个分量（平面）的 内存对齐后的行字节数（可能 ≥ 实际像素宽度 × 字节数）。
+
+// 得到的第y行数据的指针
+```
+### FILE 
+```cpp
+FILE *fopen(const char *filename, const char *mode);
+filename：文件名（如 "test.txt"）。
+
+mode：打开模式：
+
+"r"：只读（文件必须存在）。
+
+"w"：只写（若文件存在则清空，否则创建）。
+
+"a"：追加（若文件不存在则创建）。
+
+"rb" / "wb"：二进制模式（用于非文本文件）。
+
+"r+" / "w+"：读写模式
+
+size_t fwrite(const void *ptr, size_t size, size_t count, FILE *stream);
+
+ptr：要写入的数据指针（packet->data）。
+
+size：每个数据块的大小（这里是 1 字节）。
+
+count：要写入的块数（这里是 packet->size）。
+
+stream：目标文件指针（fp_out）
+
+int fclose(FILE *stream);
+```
+
