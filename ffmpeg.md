@@ -1057,3 +1057,17 @@ ffmpeg -i input.wav -c:a libfdk_aac -profile:a aac_he -b:a 64k output.m4a
 # HEv2
 ffmpeg -i input.wav -c:a libfdk_aac -profile:a aac_he_v2 -b:a 64k output.m4a
 ```
+
+
+### AAC 和 MP3
+每帧MP3音频包含1152个样本，每帧AAC音频包含1024个样本。   
+1152/1024=1.125，MP3的帧长比AAC的帧长多了12.5%。AAC每帧持续时间更少，时间切片更小，理论上音频质量更高   
+MP3每帧持续时间：1152 * 1000 / 44100 = 26.1ms   
+AAC每帧持续时间：1024 * 1000 / 44100 = 23.2ms   
+例子：在一个MP4文件中的音频流使用的AAC编码，把这个音频流直接解码再编码成MP3格式，出现了错误。
+```
+[libmp3lame @ 0x5555555aa680] frame_size (1152) was not respected for a non-last frame
+```
+错误的原因在于AAC编码器在编码时使用了AAC的ADTS封装格式，AAC的ADTS封装格式每帧音频数据的大小是1024个采样点，而MP3的帧大小是1152个采样点。   
+MP3编码器要求每次编码传入的音频帧的样本数量必须等于1152个采样点，而AAC编码器传入的音频帧的样本数量是1024个采样点，所以MP3编码器报错了。
+保存为MP3的正确做法应该是使用重采样。
