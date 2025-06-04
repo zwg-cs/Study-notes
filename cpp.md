@@ -755,7 +755,7 @@ https://blog.csdn.net/weixin_45633061/article/details/117421452
 
 ### 多线程
 https://zhuanlan.zhihu.com/p/613630658
-
+https://blog.csdn.net/sjc_0910/article/details/118861539
 多线程并发指的是在同一个进程中国执行多个线程
 
 创建线程只需要把函数传递给线程类的构造函数即可。
