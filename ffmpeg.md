@@ -1225,3 +1225,7 @@ stream：目标文件指针（fp_out）
 int fclose(FILE *stream);
 ```
 
+### ffmpeg滤镜原理
+FFmpeg 的滤镜 API 主要通过滤镜名称（filter_name 或 filter_desc）在滤镜图（AVFilterGraph）中动态添加和连接滤镜实现滤镜链
+
+https://zhuanlan.zhihu.com/p/675218673

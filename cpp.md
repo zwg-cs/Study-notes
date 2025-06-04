@@ -753,3 +753,124 @@ int main()
 小端存储：低位字节存储在低地址，高位字节存储在高地址。
 https://blog.csdn.net/weixin_45633061/article/details/117421452
 
+### 多线程
+https://zhuanlan.zhihu.com/p/613630658
+
+多线程并发指的是在同一个进程中国执行多个线程
+
+创建线程只需要把函数传递给线程类的构造函数即可。
+```cpp
+// 形式1
+std:thread myThread(thread_fun);
+// 函数形式为thread_fun()
+myThread.join(); // 等待线程结束
+
+// 形式2
+std::thread myThread(thread_fun, arg1, arg2);
+// 函数形式为thread_fun(arg1, arg2)
+myThread.join(); // 等待线程结束
+
+// 形式3
+std::thread (thread_fun, arg1).detach();
+//直接创建线程，没有名字
+//函数形式为void thread_fun(int x)
+```
+
+join()函数会阻塞当前线程，直到myThread线程结束。detach()函数会让线程在后台运行，主线程不会等待它结束。
+
+mutex是互斥锁，用于保护共享资源，防止多个线程同时访问导致数据不一致。
+
+lock_guard和unique_lock是C++11提供的两种锁的封装类，用于自动管理互斥锁的生命周期。
+
+lock_guard是一个轻量级的锁，它在构造时自动加锁，在析构时自动解锁。它不能手动解锁，只能在作用域结束时自动解锁。
+
+unique_lock是一个更灵活的锁，它可以手动加锁和解锁，并且可以在不同的线程之间传递。它还支持条件变量。
+```cpp
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
+using namespace std;
+
+// 互斥量，用于保护共享数据 cargo
+mutex mtx;
+
+// 条件变量，用于消费者等待货物到来，生产者通知消费者
+condition_variable cv;
+
+// 共享资源 cargo，表示当前是否有货物（0 表示无货）
+int cargo = 0;
+
+// 判断是否有货物（非 0 表示有）
+bool shipment_available()
+{
+    return cargo != 0;
+}
+
+// 消费者线程函数，消费 n 次货物
+void consume(int n)
+{
+    for (int i = 0; i < n; ++i)
+    {
+        // 创建独占锁，保护对 cargo 的访问
+        unique_lock<mutex> lock(mtx);
+
+        // 如果 cargo 为 0，等待条件变量（阻塞在这里，直到有货物）
+        // wait 会在条件为假时阻塞，并在被唤醒后重新检查条件
+        cv.wait(lock, shipment_available);
+
+        // 一旦条件满足，打印 cargo
+        cout << "Consumed: " << cargo << endl;
+
+        // 消费掉货物，重置为 0
+        cargo = 0;
+
+        // 锁作用域结束自动解锁
+    }
+}
+
+int main()
+{
+    // 启动消费者线程，消费 10 次
+    thread consumer_thread(consume, 10);
+
+    // 主线程作为生产者，生产 10 个 cargo
+    for (int i = 0; i < 10; ++i)
+    {
+        // 如果 cargo 还没被消费，主动让出 CPU，等待消费者消费完
+        while (shipment_available())
+            this_thread::yield(); // 让出时间片，避免忙等待占用 CPU
+
+        {
+            // 加锁以安全地修改 cargo
+            unique_lock<mutex> lck(mtx);
+
+            // 设置 cargo 为新值
+            cargo = i + 1;
+
+            cout << "Produced: " << cargo << endl;
+
+            // 通知消费者 cargo 已经准备好
+            cv.notify_one(); // 唤醒一个等待的线程（消费者）
+        }
+
+        // 解锁发生在 unique_lock 的作用域结束处
+    }
+
+    // 等待消费者线程执行完成
+    consumer_thread.join();
+
+    return 0;
+}
+
+```
+
+wait()函数会阻塞当前线程，直到条件变量被通知。notify_one()函数会通知一个等待的线程，notify_all()函数会通知所有等待的线程。
+
+与std::condition_variable::wait() 类似，不过 wait_for可以指定一个时间段，在当前线程收到通知或者指定的时间 rel_time 超时之前，该线程都会处于阻塞状态。而一旦超时或者收到了其他线程的通知，wait_for返回，剩下的处理步骤和 wait()类似。
+
+线程池(todo)
+
+
+
